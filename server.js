@@ -9,6 +9,11 @@ app.use(compression());
 app.use(express.static(__dirname));
 app.use(express.static('public'));
 
+// ─── HELPER: Get Base URL Dynamically ──────────────────────────────────────────
+const getBaseUrl = (req) => {
+  return `${req.protocol}://${req.get('host')}`;
+};
+
 // ─── AD CONFIGURATION ──────────────────────────────────────────────────────────
 const AD_SCRIPT = `
 <script>
@@ -44,7 +49,9 @@ const AD_BOTTOM = `
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const JOBS_PER_PAGE = 20;
 
-function renderHTML({ title, meta, bodyContent, schema }) {
+function renderHTML({ title, meta, bodyContent, schema, req }) {
+  const baseUrl = req ? getBaseUrl(req) : '';
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -177,7 +184,9 @@ ${bodyContent}
 ${AD_BOTTOM}
 <footer>
   &copy; 2025 UKJobs.co.uk — <strong>100,000 Jobs</strong> across the UK |
-  <a href="/jobs">Browse All</a> · <a href="/jobs?type=remote">Remote Jobs</a> · <a href="/sitemap">Sitemap</a>
+  <a href="/jobs">Browse All</a> ·
+  <a href="/jobs?type=remote">Remote Jobs</a> ·
+  <a href="/sitemap">Sitemap</a>
 </footer>
 <script>
 function openApply(title){
@@ -219,15 +228,16 @@ app.get('/', (req, res) => {
 </div>
 </a>`).join('');
 
+  const baseUrl = getBaseUrl(req);
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "UKJobs.co.uk",
-    "url": "https://your-railway-app.up.railway.app",
+    "url": baseUrl,
     "description": "UK's largest job portal with 100,000 job listings — remote and on-site across all regions",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://your-railway-app.up.railway.app/jobs?q={search_term_string}",
+      "target": `${baseUrl}/jobs?q={search_term_string}`,
       "query-input": "required name=search_term_string"
     }
   };
@@ -274,7 +284,8 @@ app.get('/', (req, res) => {
     title: 'UKJobs.co.uk — 100,000 Jobs in the UK | Remote & On-site',
     meta: 'Find your next job in the United Kingdom. 100,000 verified listings — 50,000 remote and 50,000 on-site jobs across all 12 regions.',
     bodyContent: body,
-    schema: websiteSchema
+    schema: websiteSchema,
+    req
   }));
 });
 
@@ -359,7 +370,8 @@ app.get('/jobs', (req, res) => {
     title: `UK Jobs — Page ${page} of ${totalPages.toLocaleString()} | UKJobs.co.uk`,
     meta: `Browse ${TOTAL_JOBS.toLocaleString()} jobs in the UK. Page ${page}. Remote and on-site positions across all industries.`,
     bodyContent: body,
-    schema: null
+    schema: null,
+    req
   }));
 });
 
@@ -371,7 +383,8 @@ app.get('/jobs/:id', (req, res) => {
       title: 'Job Not Found | UKJobs.co.uk',
       meta: 'This job listing was not found.',
       bodyContent: `<div class="container" style="text-align:center;padding:4rem 1.5rem"><h1>404 — Job Not Found</h1><p style="margin:1rem 0 2rem">This job may have been filled or removed.</p><a href="/jobs" style="color:#1a237e">← Browse All Jobs</a></div>`,
-      schema: null
+      schema: null,
+      req
     }));
   }
 
@@ -443,23 +456,26 @@ app.get('/jobs/:id', (req, res) => {
     title: `${job.title} at ${job.company} — ${job.location} | UKJobs.co.uk`,
     meta: `${job.title} job at ${job.company}. ${job.isRemote ? 'Remote' : job.location}. ${job.salary}. Apply now on UKJobs.co.uk.`,
     bodyContent: body,
-    schema
+    schema,
+    req
   }));
 });
 
 // ── SITEMAP INDEX ─────────────────────────────────────────────────────────────
 app.get('/sitemap.xml', (req, res) => {
+  const baseUrl = getBaseUrl(req);
   const totalSitemaps = 100;
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
   for (let i = 1; i <= totalSitemaps; i++) {
-    xml += `\n<sitemap><loc>https://your-railway-app.up.railway.app/sitemap-${i}.xml</loc></sitemap>`;
+    xml += `\n<sitemap><loc>${baseUrl}/sitemap-${i}.xml</loc></sitemap>`;
   }
   xml += `\n</sitemapindex>`;
   res.type('application/xml').send(xml);
 });
 
 app.get('/sitemap-:num.xml', (req, res) => {
+  const baseUrl = getBaseUrl(req);
   const num = parseInt(req.params.num);
   if (!num || num < 1 || num > 100) return res.status(404).send('Not found');
   const start = (num - 1) * 1000 + 1;
@@ -467,7 +483,7 @@ app.get('/sitemap-:num.xml', (req, res) => {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
   for (let i = start; i <= end; i++) {
-    xml += `\n<url><loc>https://your-railway-app.up.railway.app/jobs/${i}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+    xml += `\n<url><loc>${baseUrl}/jobs/${i}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
   }
   xml += `\n</urlset>`;
   res.type('application/xml').send(xml);
@@ -475,6 +491,7 @@ app.get('/sitemap-:num.xml', (req, res) => {
 
 // ── SITEMAP HTML PAGE ─────────────────────────────────────────────────────────
 app.get('/sitemap', (req, res) => {
+  const baseUrl = getBaseUrl(req);
   const body = `
 <div class="container">
   <h1 style="margin-bottom:1rem">Sitemap — UKJobs.co.uk</h1>
@@ -514,15 +531,17 @@ app.get('/sitemap', (req, res) => {
     title: 'Sitemap | UKJobs.co.uk',
     meta: 'Complete sitemap of UKJobs.co.uk with 100,000 job listings across the United Kingdom.',
     bodyContent: body,
-    schema: null
+    schema: null,
+    req
   }));
 });
 
 // ── ROBOTS.TXT ────────────────────────────────────────────────────────────────
 app.get('/robots.txt', (req, res) => {
+  const baseUrl = getBaseUrl(req);
   res.type('text/plain').send(`User-agent: *
 Allow: /
-Sitemap: https://your-railway-app.up.railway.app/sitemap.xml
+Sitemap: ${baseUrl}/sitemap.xml
 Disallow: /api/`);
 });
 
