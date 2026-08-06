@@ -57,7 +57,7 @@ function renderHTML({ title, meta, bodyContent, schema, req }) {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="google-site-verification" content="f_swjSKQxA8Dye1qCFyBXzBnhlnmJ2vPjFOPiLsvIvo" />
+<meta name="google-site-verification" content="oJdcKbrJxTCibHfhezKJKDzrBBtnmHSuTaqXkw6gq5Y" />
 <title>${title}</title>
 <meta name="description" content="${meta}"/>
 <meta property="og:title" content="${title}"/>
